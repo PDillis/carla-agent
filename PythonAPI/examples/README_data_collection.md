@@ -29,6 +29,8 @@ The data collection system consists of three main components:
 
 ### Basic Usage
 
+#### With Display (Local Machine)
+
 ```bash
 # Start CARLA server first
 ./CarlaUE5.sh
@@ -42,6 +44,38 @@ python behavior_agent_data_collection.py \
     --max-frames 1000 \
     --output-dir ./my_dataset
 ```
+
+#### Headless Mode (Server/No Display)
+
+For server-based data collection without display:
+
+```bash
+# Start CARLA in headless mode (offscreen rendering)
+SDL_VIDEODRIVER=offscreen ./CarlaUE5.sh -RenderOffScreen
+
+# Alternative: Use xvfb (virtual framebuffer)
+xvfb-run -a ./CarlaUE5.sh
+
+# Or with explicit display settings
+DISPLAY= ./CarlaUE5.sh -RenderOffScreen -nosound -carla-rpc-port=2000
+
+# In another terminal/tmux session, run data collection
+cd PythonAPI/examples
+python behavior_agent_data_collection.py \
+    --sync \
+    --town Town01 \
+    --behavior normal \
+    --weather 0 \
+    --max-frames 1000 \
+    --output-dir /path/to/storage/b2d_dataset
+```
+
+**Important Notes for Headless Mode:**
+- Use `--sync` flag for better stability in headless mode
+- Specify absolute paths for `--output-dir` (e.g., `/data/datasets/b2d`)
+- Monitor disk space - each 1000 frames uses ~1-2 GB
+- Use `tmux` or `screen` for persistent sessions
+- Check logs: CARLA logs are in `$CARLA_ROOT/Build/LinuxNoEditor/CarlaUE5/Saved/Logs/`
 
 ### Advanced Usage
 
@@ -68,7 +102,7 @@ python behavior_agent_data_collection.py \
 | `--port` | 2000 | TCP port for CARLA connection |
 | `--tm-port` | 8000 | Traffic Manager port |
 | `--sync` | False | Enable synchronous mode (recommended) |
-| `--behavior` | normal | Driving behavior: cautious, normal, aggressive |
+| `--behavior` | normal | Driving behavior profile (see table below) |
 | `--town` | Town01 | Map/town to load |
 | `--weather` | 0 | Weather preset ID (0-13) |
 | `--route-id` | 1 | Route number for dataset naming |
@@ -76,6 +110,53 @@ python behavior_agent_data_collection.py \
 | `--max-frames` | 1000 | Maximum frames to collect |
 | `--num-vehicles` | 30 | Number of traffic vehicles |
 | `--num-pedestrians` | 10 | Number of pedestrians |
+
+### Behavior Profiles
+
+The system supports 11 different driving behavior profiles for diverse dataset collection:
+
+#### Original Behaviors (3)
+
+| Profile | Command | Speed | Risk | Characteristics |
+|---------|---------|-------|------|-----------------|
+| **Cautious** | `cautious` | Low | Very Low | Conservative, follows rules closely |
+| **Normal** | `normal` | Medium | Medium | Standard balanced driving |
+| **Aggressive** | `aggressive` | High | High | Fast, pushy, impatient |
+
+#### Extended Psychological Profiles (8)
+
+| Profile | Command | Speed | Risk | Key Traits |
+|---------|---------|-------|------|------------|
+| **Steady Veteran** | `steady_veteran` | Very Low | Lowest | Very cautious, rule-following, smooth braking, mindful |
+| **Urban Daredevil** | `urban_daredevil` | Highest | High | Confident, rule-breaking, efficient, aggressive |
+| **Confident Cruiser** | `confident_cruiser` | Medium-High | Medium | Efficient, good interaction, attentive, rule-bending |
+| **Mindful Navigator** | `mindful_navigator` | Medium-Low | Low | Cautious, very attentive, smooth braking, rule-following |
+| **Bold Rookie** | `bold_rookie` | High | High | Confident, abrupt braking, aggressive, less mindful |
+| **Uncertain Sprinter** | `uncertain_sprinter` | High | Highest | Inconsistent, inattentive, inefficient, risky |
+| **Chill Maverick** | `chill_maverick` | High | Medium | Casual, rule-bending, efficient, smooth but pushy |
+| **Balanced Driver** | `balanced_driver` | Medium | Low | Average in all aspects, balanced reactions |
+
+**Usage Examples:**
+
+```bash
+# Collect data with the safest driver
+python behavior_agent_data_collection.py --behavior steady_veteran --max-frames 2000
+
+# Collect data with the riskiest driver
+python behavior_agent_data_collection.py --behavior uncertain_sprinter --max-frames 2000
+
+# Collect data across all profiles (bash loop)
+for behavior in cautious normal aggressive steady_veteran urban_daredevil \
+                confident_cruiser mindful_navigator bold_rookie \
+                uncertain_sprinter chill_maverick balanced_driver; do
+    python behavior_agent_data_collection.py \
+        --behavior $behavior \
+        --route-id 1 \
+        --max-frames 1000 \
+        --sync \
+        --output-dir /data/b2d_dataset
+done
+```
 
 ## Dataset Structure
 
@@ -244,11 +325,164 @@ sensor_manager.destroy()
 
 ## Tips for Large-Scale Data Collection
 
-1. **Use Synchronous Mode**: Add `--sync` flag for deterministic behavior
+### General Best Practices
+
+1. **Use Synchronous Mode**: Add `--sync` flag for deterministic behavior and consistency
 2. **Adjust Traffic**: Vary `--num-vehicles` and `--num-pedestrians` for diversity
 3. **Multiple Runs**: Collect multiple routes with different weather conditions
 4. **Disk Space**: Ensure sufficient storage (~1-2 GB per 1000 frames)
 5. **Performance**: For better FPS, reduce number of traffic vehicles or use headless mode
+
+### Server Deployment (Headless Mode)
+
+For large-scale data collection on servers without displays:
+
+#### 1. **Setup Virtual Display (Recommended)**
+
+```bash
+# Install xvfb
+sudo apt-get install xvfb
+
+# Create a systemd service for CARLA
+cat > /etc/systemd/system/carla.service <<EOF
+[Unit]
+Description=CARLA Simulator Server
+After=network.target
+
+[Service]
+Type=simple
+User=youruser
+WorkingDirectory=/path/to/CARLA
+ExecStart=/usr/bin/xvfb-run -a /path/to/CARLA/CarlaUE5.sh -RenderOffScreen -nosound -carla-rpc-port=2000
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Start the service
+sudo systemctl daemon-reload
+sudo systemctl start carla
+sudo systemctl enable carla  # Auto-start on boot
+```
+
+#### 2. **Tmux Session Management**
+
+```bash
+# Start persistent tmux session
+tmux new -s carla_data_collection
+
+# In tmux, start CARLA server
+SDL_VIDEODRIVER=offscreen ./CarlaUE5.sh -RenderOffScreen -nosound
+
+# Split window (Ctrl+B, %)
+# In new pane, run data collection
+cd PythonAPI/examples
+python behavior_agent_data_collection.py \
+    --sync \
+    --behavior normal \
+    --town Town01 \
+    --weather 0 \
+    --max-frames 10000 \
+    --output-dir /mnt/storage/b2d_dataset
+
+# Detach: Ctrl+B, D
+# Reattach later: tmux attach -t carla_data_collection
+```
+
+#### 3. **Batch Collection Script**
+
+Create a script to collect data for all behaviors and weather conditions:
+
+```bash
+#!/bin/bash
+# collect_all_data.sh
+
+OUTPUT_DIR="/data/b2d_dataset"
+TOWNS=("Town01" "Town02" "Town03" "Town04" "Town05")
+WEATHERS=(0 1 2 3 4 5 6 7 8 9 10 11 12 13)
+BEHAVIORS=(cautious normal aggressive steady_veteran urban_daredevil \
+           confident_cruiser mindful_navigator bold_rookie \
+           uncertain_sprinter chill_maverick balanced_driver)
+MAX_FRAMES=5000
+ROUTE_ID=1
+
+for town in "${TOWNS[@]}"; do
+    for weather in "${WEATHERS[@]}"; do
+        for behavior in "${BEHAVIORS[@]}"; do
+            echo "Collecting: $town, Weather $weather, Behavior $behavior"
+
+            python behavior_agent_data_collection.py \
+                --sync \
+                --town "$town" \
+                --weather "$weather" \
+                --behavior "$behavior" \
+                --route-id "$ROUTE_ID" \
+                --max-frames "$MAX_FRAMES" \
+                --num-vehicles 30 \
+                --output-dir "$OUTPUT_DIR" \
+                2>&1 | tee -a "logs/collection_${town}_${weather}_${behavior}.log"
+
+            # Increment route ID
+            ROUTE_ID=$((ROUTE_ID + 1))
+
+            # Optional: Add delay between runs
+            sleep 10
+        done
+    done
+done
+
+echo "Data collection complete! Total scenarios: $((${#TOWNS[@]} * ${#WEATHERS[@]} * ${#BEHAVIORS[@]}))"
+```
+
+#### 4. **Monitoring & Logging**
+
+```bash
+# Create logs directory
+mkdir -p logs
+
+# Monitor CARLA server logs
+tail -f $CARLA_ROOT/Build/LinuxNoEditor/CarlaUE5/Saved/Logs/CarlaUE5.log
+
+# Monitor disk usage
+watch -n 60 'df -h /data/b2d_dataset'
+
+# Monitor collection progress
+watch -n 10 'find /data/b2d_dataset -name "*.jpg" | wc -l'
+```
+
+#### 5. **Resource Management**
+
+```bash
+# Limit GPU usage (if needed)
+export CUDA_VISIBLE_DEVICES=0  # Use specific GPU
+
+# Set process priority
+nice -n 10 ./CarlaUE5.sh -RenderOffScreen  # Lower priority
+
+# Limit memory (using cgroups)
+cgexec -g memory:carla_limit ./CarlaUE5.sh
+```
+
+#### 6. **Data Validation**
+
+After collection, validate the dataset:
+
+```bash
+# Check for incomplete scenarios
+for dir in /data/b2d_dataset/*/; do
+    anno_count=$(ls "$dir/anno/" 2>/dev/null | wc -l)
+    rgb_count=$(ls "$dir/camera/rgb_front/" 2>/dev/null | wc -l)
+
+    if [ "$anno_count" -ne "$rgb_count" ]; then
+        echo "WARNING: Mismatch in $dir (anno: $anno_count, rgb: $rgb_count)"
+    fi
+done
+
+# Check disk usage per scenario
+du -sh /data/b2d_dataset/*/ | sort -h
+```
 
 ## Known Limitations
 

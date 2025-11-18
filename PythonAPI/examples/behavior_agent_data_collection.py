@@ -41,8 +41,12 @@ def main():
     argparser.add_argument('-p', '--port', default=2000, type=int, help='TCP port to listen to (default: 2000)')
     argparser.add_argument('--tm-port', default=8000, type=int, help='Traffic Manager port (default: 8000)')
     argparser.add_argument('--sync', action='store_true', help='Synchronous mode execution')
-    argparser.add_argument('--behavior', default='normal', choices=['cautious', 'normal', 'aggressive'],
-                           help='Driving behavior (default: normal)')
+    argparser.add_argument('--behavior', default='normal',
+                           choices=['cautious', 'normal', 'aggressive',
+                                    'steady_veteran', 'urban_daredevil', 'confident_cruiser',
+                                    'mindful_navigator', 'bold_rookie', 'uncertain_sprinter',
+                                    'chill_maverick', 'balanced_driver'],
+                           help='Driving behavior profile (default: normal)')
     argparser.add_argument('--town', default='Town01', help='Town/map to load (default: Town01)')
     argparser.add_argument('--weather', default=0, type=int, help='Weather preset ID (default: 0)')
     argparser.add_argument('--route-id', default=1, type=int, help='Route ID for naming (default: 1)')

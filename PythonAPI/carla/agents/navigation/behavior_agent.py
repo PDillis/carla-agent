@@ -13,7 +13,11 @@ import numpy as np
 import carla
 from agents.navigation.basic_agent import BasicAgent
 from agents.navigation.local_planner import RoadOption
-from agents.navigation.behavior_types import Cautious, Aggressive, Normal
+from agents.navigation.behavior_types import (
+    Cautious, Aggressive, Normal,
+    SteadyVeteran, UrbanDaredevil, ConfidentCruiser, MindfulNavigator,
+    BoldRookie, UncertainSprinter, ChillMaverick, BalancedDriver
+)
 
 from agents.tools.misc import get_speed, positive, is_within_distance, compute_distance
 
@@ -36,6 +40,10 @@ class BehaviorAgent(BasicAgent):
 
             :param vehicle: actor to apply to local planner logic onto
             :param behavior: type of agent to apply
+                Original: 'cautious', 'normal', 'aggressive'
+                Extended: 'steady_veteran', 'urban_daredevil', 'confident_cruiser',
+                         'mindful_navigator', 'bold_rookie', 'uncertain_sprinter',
+                         'chill_maverick', 'balanced_driver'
         """
 
         super().__init__(vehicle, opt_dict=opt_dict, map_inst=map_inst, grp_inst=grp_inst)
@@ -52,14 +60,34 @@ class BehaviorAgent(BasicAgent):
         self._sampling_resolution = 4.5
 
         # Parameters for agent behavior
+        # Original behaviors
         if behavior == 'cautious':
             self._behavior = Cautious()
-
         elif behavior == 'normal':
             self._behavior = Normal()
-
         elif behavior == 'aggressive':
             self._behavior = Aggressive()
+
+        # Extended psychological driver profiles
+        elif behavior == 'steady_veteran':
+            self._behavior = SteadyVeteran()
+        elif behavior == 'urban_daredevil':
+            self._behavior = UrbanDaredevil()
+        elif behavior == 'confident_cruiser':
+            self._behavior = ConfidentCruiser()
+        elif behavior == 'mindful_navigator':
+            self._behavior = MindfulNavigator()
+        elif behavior == 'bold_rookie':
+            self._behavior = BoldRookie()
+        elif behavior == 'uncertain_sprinter':
+            self._behavior = UncertainSprinter()
+        elif behavior == 'chill_maverick':
+            self._behavior = ChillMaverick()
+        elif behavior == 'balanced_driver':
+            self._behavior = BalancedDriver()
+
+        else:
+            raise ValueError(f"Unknown behavior: {behavior}")
 
     def _update_information(self):
         """

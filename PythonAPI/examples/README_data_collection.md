@@ -228,6 +228,40 @@ Each RGB camera has corresponding depth, semantic segmentation, and instance seg
 - **GNSS**: Global positioning
 - **Speedometer**: 20 Hz reading frequency
 
+### Image Format Details
+
+**RGB Images (`.jpg`):**
+- Standard RGB color images
+- JPEG format with 95% quality
+- Resolution: 1600x900
+
+**Depth Images (`.png`):**
+- Encoded depth information in RGB channels
+- Use CARLA depth conversion formulas to decode actual depth values
+- Logarithmic encoding for better precision at long distances
+
+**Semantic Segmentation (`.png`):**
+- **CityScapes color palette** for visual interpretation
+- Each class has a distinct color for easy visualization:
+  - Road: Purple `(128, 64, 128)`
+  - Sidewalk: Pink `(244, 35, 232)`
+  - Building: Gray `(70, 70, 70)`
+  - Vegetation: Green `(107, 142, 35)`
+  - Vehicle: Dark Blue `(0, 0, 142)`
+  - Pedestrian: Red `(220, 20, 60)`
+  - Sky: Light Blue `(70, 130, 180)`
+  - And more...
+- **Visually readable** without post-processing
+- Can be converted back to class IDs using CityScapes color mapping if needed
+
+**Instance Segmentation (`.png`):**
+- Each object instance has a **unique ID**
+- Instance ID encoded in **red channel** (R value)
+- Format: `instance_id = pixel[R]`
+- Different vehicles/pedestrians have different IDs
+- Allows tracking individual objects across frames
+- Example: Extract all pixels belonging to vehicle #5: `mask = (image[:,:,0] == 5)`
+
 ## Annotation Data Format
 
 Each `anno/*.json.gz` file contains:

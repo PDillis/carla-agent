@@ -184,28 +184,47 @@ class DataCollector:
         img.save(save_path, 'PNG')
 
     def _save_semantic_image(self, image_data, camera_dir, sensor_id, frame_str):
-        """Save semantic segmentation image as PNG."""
-        # Convert to CityScapes palette
+        """
+        Save semantic segmentation image with CityScapes palette as PNG.
+
+        The CityScapes palette makes the segmentation visually interpretable with
+        different colors for each class (road, vehicle, pedestrian, etc.).
+        """
+        # Convert to CityScapes palette for human-readable visualization
         image_data.convert(carla.ColorConverter.CityScapesPalette)
 
+        # Extract RGB data (palette-encoded)
         array = np.frombuffer(image_data.raw_data, dtype=np.dtype("uint8"))
         array = np.reshape(array, (image_data.height, image_data.width, 4))
-        array = array[:, :, :3]  # Remove alpha channel
+        array = array[:, :, :3]  # Remove alpha channel, keep RGB
 
-        # Save as PNG
-        img = Image.fromarray(array)
+        # Save as RGB PNG with CityScapes colors
+        img = Image.fromarray(array, mode='RGB')
         save_path = os.path.join(camera_dir, sensor_id, f"{frame_str}.png")
         img.save(save_path, 'PNG')
 
     def _save_instance_image(self, image_data, camera_dir, sensor_id, frame_str):
-        """Save instance segmentation image as PNG."""
-        # Instance segmentation saves raw data
+        """
+        Save instance segmentation image as PNG.
+
+        Instance segmentation encodes each object instance with a unique ID.
+        The instance ID is encoded in the red channel (R value).
+        Format: R contains instance ID, G and B are used for additional encoding.
+
+        To decode: instance_id = R_value
+        Each unique instance has a different ID, allowing you to distinguish
+        between different cars, pedestrians, etc.
+        """
+        # Get raw instance data (no color conversion needed)
         array = np.frombuffer(image_data.raw_data, dtype=np.dtype("uint8"))
         array = np.reshape(array, (image_data.height, image_data.width, 4))
-        array = array[:, :, :3]  # Remove alpha channel
 
-        # Save as PNG
-        img = Image.fromarray(array)
+        # For instance segmentation, we want to preserve all channels for instance ID encoding
+        # The R channel contains the primary instance ID
+        array_rgb = array[:, :, :3]  # Remove alpha, keep RGB for instance encoding
+
+        # Save as PNG preserving instance IDs
+        img = Image.fromarray(array_rgb, mode='RGB')
         save_path = os.path.join(camera_dir, sensor_id, f"{frame_str}.png")
         img.save(save_path, 'PNG')
 

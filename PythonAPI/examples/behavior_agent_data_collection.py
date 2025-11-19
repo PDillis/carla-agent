@@ -21,9 +21,9 @@ import time
 import sys
 import os
 
-# Add PythonAPI to path
+# Add PythonAPI/carla to path for agents module
 try:
-    sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+    sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'carla'))
 except IndexError:
     pass
 
